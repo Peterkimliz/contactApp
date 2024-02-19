@@ -1,34 +1,51 @@
 package com.example.contact.presentaton.pages
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult.ActionPerformed
-import androidx.compose.material3.SnackbarResult.Dismissed
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.contact.presentaton.components.AppBar
-import kotlinx.coroutines.launch
+import com.example.contact.presentaton.events.ContactEvent
+import com.example.contact.presentaton.events.ContactState
+import com.example.contact.presentaton.events.SortType
 
 @Composable
-fun HomePage() {
+fun HomePage(
+    state: ContactState,
+    onEvent: (ContactEvent) -> Unit
+) {
     val mContext = LocalContext.current;
     val snackbarHostState = remember {
         SnackbarHostState()
     }
-    val scope= rememberCoroutineScope();
+    val scope = rememberCoroutineScope();
     Scaffold(
         topBar = {
             AppBar("Home")
@@ -38,30 +55,78 @@ fun HomePage() {
                 containerColor = MaterialTheme.colorScheme.primary,
                 shape = FloatingActionButtonDefaults.largeShape,
                 onClick = {
-//                    Toast.makeText(mContext, "Clicked Add button", Toast.LENGTH_LONG).show()
-                    scope.launch {
-                       val result = snackbarHostState.showSnackbar(message = "Hello there",actionLabel = "null", duration = SnackbarDuration.Indefinite, withDismissAction = true);
-                        when(result){
-                            Dismissed -> TODO()
-                            ActionPerformed -> TODO()
-                        }
-                    }
+                    onEvent(ContactEvent.ShowDialog)
 
                 }) {
 
                 Icon(imageVector = Icons.Default.Add, contentDescription = "Add Contact")
 
             }
-        }
-        , snackbarHost = {
+        }, snackbarHost = {
             snackbarHostState
         }
     ) { paddingValues ->
-        Column(
+        if (state.isAddingContact){
+            ContactDialog(state = state, onEvent = onEvent)
+        }
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues), verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    SortType.values().forEach { sortType ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable {
+                                onEvent(
+                                    ContactEvent.SortContact(
+                                        sortType
+                                    )
+                                )
+                            }
+                        ) {
+                            RadioButton(selected = sortType == state.sortType, onClick = {
+                                onEvent(
+                                    ContactEvent.SortContact(
+                                        sortType
+                                    )
+                                )
+                            })
+                            Text(text = sortType.name)
+                        }
+                    }
+
+
+                }
+            }
+            items(state.contacts) { contact ->
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(text = "${contact.firstName} ${contact.lastName}", fontSize = 20.sp)
+                        Text(text = contact.phoneNumber, fontSize = 12.sp)
+                    }
+                    IconButton(onClick = {
+                        onEvent(ContactEvent.DeleteContact(contact))
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Contact"
+                        )
+                    }
+
+                }
+
+            }
 
         }
 
